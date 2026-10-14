@@ -1,26 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#FAFAFA"
+    android:background="#0F1218"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:padding="14dp">
 
-    <!-- Top Brand Header -->
+    <!-- Top Brand Header Card -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:background="@drawable/bg_dark_card"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingBottom="8dp">
+        android:padding="12dp">
 
         <ImageView
             android:id="@+id/ivAppLogo"
-            android:layout_width="48dp"
-            android:layout_height="48dp"
+            android:layout_width="46dp"
+            android:layout_height="46dp"
             android:contentDescription="PKassist Logo"
-            android:src="@mipmap/ic_launcher" />
+            android:src="@mipmap/ic_launcher_round" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -32,90 +32,213 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="PKassist"
-                android:textColor="#181818"
-                android:textSize="22sp"
+                android:text="PKassist Pro"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvModeStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Hybrid AI (Online Gemini Lite + Offline Engine)"
-                android:textColor="#F26522"
-                android:textSize="12sp" />
+                android:text="● Smart Offline NLU + Online AI Active"
+                android:textColor="#4CAF50"
+                android:textSize="11sp" />
         </LinearLayout>
 
         <Button
             android:id="@+id/btnApiKey"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="API Key"
-            android:textColor="#181818" />
+            android:layout_height="38dp"
+            android:text="🔑 Key"
+            android:textColor="#ECEFF4"
+            android:textSize="12sp" />
 
         <Button
             android:id="@+id/btnCheckUpdate"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Update"
-            android:textColor="#F26522" />
+            android:layout_height="38dp"
+            android:text="⬇ Update"
+            android:textColor="#F26522"
+            android:textSize="12sp" />
     </LinearLayout>
 
-    <!-- Accessibility & Permissions Quick Banner -->
+    <!-- Control Center: Accessibility + Floating Background Popup Toggles -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#FFF3EC"
-        android:gravity="center_vertical"
+        android:layout_marginTop="8dp"
         android:orientation="horizontal"
-        android:padding="10dp">
+        android:weightSum="2">
 
-        <TextView
-            android:id="@+id/tvAccessibilityStatus"
+        <!-- Card 1: Accessibility Control -->
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginEnd="4dp"
             android:layout_weight="1"
-            android:text="Enable Accessibility for auto-typing &amp; screen control"
-            android:textColor="#333333"
-            android:textSize="12sp" />
+            android:background="@drawable/bg_dark_card"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:padding="10dp">
 
-        <Button
-            android:id="@+id/btnEnableAccessibility"
-            android:layout_width="wrap_content"
-            android:layout_height="36dp"
-            android:backgroundTint="#F26522"
-            android:insetTop="0dp"
-            android:insetBottom="0dp"
-            android:text="Enable"
-            android:textColor="#FFFFFF"
-            android:textSize="11sp" />
+            <TextView
+                android:id="@+id/tvAccessibilityStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⚠️ Screen Control Off"
+                android:textColor="#ECEFF4"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Auto-type, click &amp; WhatsApp"
+                android:textColor="#9AA5B1"
+                android:textSize="10sp" />
+
+            <Button
+                android:id="@+id/btnEnableAccessibility"
+                android:layout_width="match_parent"
+                android:layout_height="34dp"
+                android:layout_marginTop="6dp"
+                android:backgroundTint="#F26522"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="Enable Control"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <!-- Card 2: Floating Popup & Background Mode -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="4dp"
+            android:layout_weight="1"
+            android:background="@drawable/bg_dark_card"
+            android:gravity="center_vertical"
+            android:orientation="vertical"
+            android:padding="10dp">
+
+            <TextView
+                android:id="@+id/tvFloatingStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="💬 Floating Popup"
+                android:textColor="#ECEFF4"
+                android:textSize="12sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:text="Use PKassist over any app"
+                android:textColor="#9AA5B1"
+                android:textSize="10sp" />
+
+            <Button
+                android:id="@+id/btnToggleFloating"
+                android:layout_width="match_parent"
+                android:layout_height="34dp"
+                android:layout_marginTop="6dp"
+                android:backgroundTint="#2E7D32"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="Start Popup"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp" />
+        </LinearLayout>
     </LinearLayout>
 
-    <!-- Conversation Log -->
+    <!-- Quick Action Chips Horizontal Bar -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:scrollbars="none">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/chipWhatsApp"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_marginEnd="6dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="💬 WhatsApp Msg"
+                android:textColor="#ECEFF4"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/chipAlarm"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_marginEnd="6dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="⏰ Set Alarm"
+                android:textColor="#ECEFF4"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/chipTorch"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_marginEnd="6dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="🔦 Torch Toggle"
+                android:textColor="#ECEFF4"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/chipYouTube"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="▶ YouTube Search"
+                android:textColor="#ECEFF4"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+    <!-- Conversation Log Card -->
     <ScrollView
         android:id="@+id/scrollChat"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_marginTop="10dp"
-        android:layout_marginBottom="10dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="8dp"
         android:layout_weight="1"
-        android:background="#FFFFFF"
-        android:elevation="1dp"
-        android:padding="12dp">
+        android:background="@drawable/bg_dark_card"
+        android:padding="14dp">
 
         <TextView
             android:id="@+id/tvChatHistory"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:lineSpacingExtra="4dp"
-            android:text="PKassist Ready!\n\nTry commands (Online or Offline):\n• 'Call Rahul' or '9876543210 par call lagao'\n• 'Send SMS to 9876543210 I am on my way'\n• 'Open WhatsApp' / 'YouTube kholo'\n• 'Type Hello how are you'\n• 'Turn on flashlight' / 'Go home'\n"
-            android:textColor="#222222"
+            android:lineSpacingExtra="5dp"
+            android:text="🤖 PKassist Pro v2.0 Ready!\n\nAb aap single ya multi-step commands bol ya likh sakte hain:\n• 'Rajesh ko WhatsApp per message karo hay likhkar'\n• 'Open WhatsApp and search Rajesh'\n• 'Alarm lagao 2:40'\n• 'Send button per tap karo' (Floating Popup se kisi bhi app ke upar)\n• 'YouTube par Arijit Singh chala do'\n"
+            android:textColor="#ECEFF4"
             android:textSize="14sp" />
     </ScrollView>
 
-    <!-- Command Input & Voice Bar -->
+    <!-- High-Contrast Command Input & Voice Bar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -127,11 +250,13 @@
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:background="@android:drawable/editbox_background_normal"
-            android:hint="Ask or command PKassist..."
+            android:background="@drawable/bg_input_box"
+            android:hint="Hinglish / Hindi / English command..."
             android:imeOptions="actionSend"
             android:inputType="text"
-            android:paddingHorizontal="12dp"
+            android:paddingHorizontal="16dp"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#8892B0"
             android:textSize="14sp" />
 
         <Button
@@ -139,7 +264,7 @@
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:layout_marginStart="6dp"
-            android:backgroundTint="#181818"
+            android:backgroundTint="#2E3440"
             android:text="Send"
             android:textColor="#FFFFFF" />
 
@@ -157,17 +282,19 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="10dp"
+        android:layout_marginTop="8dp"
         android:gravity="center"
-        android:orientation="vertical"
-        android:paddingTop="4dp">
+        android:orientation="vertical">
 
         <ImageView
             android:id="@+id/ivRvFooter"
-            android:layout_width="220dp"
-            android:layout_height="38dp"
+            android:layout_width="210dp"
+            android:layout_height="34dp"
             android:adjustViewBounds="true"
+            android:background="@drawable/bg_footer_pill"
             android:contentDescription="Powered by RV Group"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
             android:scaleType="fitCenter"
             android:src="@drawable/rv_footer_badge" />
 
@@ -175,8 +302,9 @@
             android:id="@+id/tvVersionFooter"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="v1.0.0 • GitHub Auto-Update Active"
-            android:textColor="#888888"
+            android:layout_marginTop="3dp"
+            android:text="v2.0.1 • Background Popup &amp; GitHub Auto-Update Active"
+            android:textColor="#8892B0"
             android:textSize="10sp" />
     </LinearLayout>
 

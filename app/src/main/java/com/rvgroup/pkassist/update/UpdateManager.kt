@@ -23,7 +23,8 @@ import java.io.File
 data class ReleaseInfo(
     val versionName: String,
     val apkDownloadUrl: String,
-    val releaseNotes: String
+    val releaseNotes: String,
+    val isNewer: Boolean
 )
 
 class UpdateManager(private val context: Context) {
@@ -43,21 +44,25 @@ class UpdateManager(private val context: Context) {
                 if (!response.isSuccessful) return@withContext null
                 val json = JSONObject(response.body?.string() ?: return@withContext null)
                 val latestTag = json.optString("tag_name", "").removePrefix("v")
-                val notes = json.optString("body", "New update available from GitHub.")
+                val notes = json.optString("body", "New update available on GitHub.")
+                val newer = latestTag.isNotEmpty() && isNewerVersion(latestTag, BuildConfig.VERSION_NAME)
 
-                if (latestTag.isNotEmpty() && isNewerVersion(latestTag, BuildConfig.VERSION_NAME)) {
-                    val assets = json.optJSONArray("assets")
-                    if (assets != null && assets.length() > 0) {
-                        for (i in 0 until assets.length()) {
-                            val asset = assets.getJSONObject(i)
-                            val url = asset.optString("browser_download_url", "")
-                            if (url.endsWith(".apk")) {
-                                val info = ReleaseInfo(latestTag, url, notes)
-                                sendUpdateNotification(info)
-                                return@withContext info
-                            }
+                val assets = json.optJSONArray("assets")
+                var apkUrl = ""
+                if (assets != null) {
+                    for (i in 0 until assets.length()) {
+                        val asset = assets.getJSONObject(i)
+                        val url = asset.optString("browser_download_url", "")
+                        if (url.endsWith(".apk")) {
+                            apkUrl = url
+                            break
                         }
                     }
+                }
+                if (apkUrl.isNotEmpty()) {
+                    val info = ReleaseInfo(latestTag, apkUrl, notes, newer)
+                    if (newer) sendUpdateNotification(info)
+                    return@withContext info
                 }
             }
         } catch (_: Exception) {
@@ -91,8 +96,8 @@ class UpdateManager(private val context: Context) {
 
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle("PKassist v${release.versionName} Available!")
-            .setContentText("New GitHub push detected. Tap Update in app to install.")
+            .setContentTitle("PKassist Pro v${release.versionName} Available!")
+            .setContentText("New GitHub push built. Open PKassist and tap Update to install.")
             .setStyle(NotificationCompat.BigTextStyle().bigText(release.releaseNotes))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
@@ -108,7 +113,7 @@ class UpdateManager(private val context: Context) {
 
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(release.apkDownloadUrl))
-            .setTitle("Downloading PKassist v${release.versionName}")
+            .setTitle("Downloading PKassist Pro v${release.versionName}")
             .setDescription("Updating from PKYcodes/PKassist GitHub Release...")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, fileName)

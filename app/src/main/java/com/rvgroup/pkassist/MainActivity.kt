@@ -3,6 +3,7 @@ package com.rvgroup.pkassist
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -21,6 +22,7 @@ import androidx.lifecycle.lifecycleScope
 import com.rvgroup.pkassist.databinding.ActivityMainBinding
 import com.rvgroup.pkassist.engine.CommandProcessor
 import com.rvgroup.pkassist.service.PKAssistAccessibilityService
+import com.rvgroup.pkassist.service.PKFloatingService
 import com.rvgroup.pkassist.update.UpdateManager
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -32,6 +34,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private lateinit var updateManager: UpdateManager
     private var tts: TextToSpeech? = null
     private var speechRecognizer: SpeechRecognizer? = null
+    private var torchState = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -42,25 +45,38 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         updateManager = UpdateManager(this)
         tts = TextToSpeech(this, this)
 
-        binding.tvVersionFooter.text = "v${BuildConfig.VERSION_NAME} • GitHub Auto-Update Active (PKYcodes/PKassist)"
+        binding.tvVersionFooter.text =
+            "v${BuildConfig.VERSION_NAME} • Background Popup & GitHub Auto-Update (PKYcodes/PKassist)"
 
         requestEssentialPermissions()
         setupSpeechRecognizer()
         setupListeners()
 
-        // Automatically check GitHub Releases on launch
+        // Check GitHub Releases automatically on startup
         checkForGitHubUpdate(silentIfUpToDate = true)
     }
 
     override fun onResume() {
         super.onResume()
+        updateServiceStatusUI()
+    }
+
+    private fun updateServiceStatusUI() {
         val accActive = PKAssistAccessibilityService.isRunning()
         binding.tvAccessibilityStatus.text = if (accActive) {
-            "✅ Accessibility Active (Auto-Typing & Screen Control Ready)"
+            "✅ Screen Control Active"
         } else {
-            "Enable Accessibility for auto-typing & screen control"
+            "⚠️ Screen Control Off"
         }
-        binding.btnEnableAccessibility.text = if (accActive) "Settings" else "Enable"
+        binding.btnEnableAccessibility.text = if (accActive) "Settings" else "Enable Control"
+
+        val floatActive = PKFloatingService.isRunning
+        binding.tvFloatingStatus.text = if (floatActive) {
+            "🟢 Popup Active"
+        } else {
+            "💬 Floating Popup"
+        }
+        binding.btnToggleFloating.text = if (floatActive) "Stop Popup" else "Start Popup"
     }
 
     private fun setupListeners() {
@@ -80,22 +96,75 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
+        binding.btnToggleFloating.setOnClickListener {
+            toggleFloatingAssistant()
+        }
+
         binding.btnApiKey.setOnClickListener {
             showApiKeyDialog()
         }
 
         binding.btnCheckUpdate.setOnClickListener {
+            Toast.makeText(this, "Checking PKYcodes/PKassist releases...", Toast.LENGTH_SHORT).show()
             checkForGitHubUpdate(silentIfUpToDate = false)
+        }
+
+        // Quick Action Chips
+        binding.chipWhatsApp.setOnClickListener {
+            binding.etCommand.setText("Rajesh ko WhatsApp per message karo hay likhkar")
+            binding.etCommand.setSelection(binding.etCommand.text.length)
+        }
+        binding.chipAlarm.setOnClickListener {
+            handleUserCommand("alarm lagao 6:30")
+        }
+        binding.chipTorch.setOnClickListener {
+            torchState = !torchState
+            handleUserCommand(if (torchState) "flashlight on" else "flashlight off")
+        }
+        binding.chipYouTube.setOnClickListener {
+            binding.etCommand.setText("YouTube par Arijit Singh songs chala do")
+            binding.etCommand.setSelection(binding.etCommand.text.length)
         }
     }
 
+    private fun toggleFloatingAssistant() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            AlertDialog.Builder(this)
+                .setTitle("Enable 'Display Over Other Apps'")
+                .setMessage("PKassist ko WhatsApp aur dusre apps ke upar Floating Popup me chalane ke liye Overlay permission on karein.")
+                .setPositiveButton("Grant Permission") { _, _ ->
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
+                    startActivity(intent)
+                }
+                .setNegativeButton("Cancel", null)
+                .show()
+            return
+        }
+
+        val serviceIntent = Intent(this, PKFloatingService::class.java)
+        if (PKFloatingService.isRunning) {
+            stopService(serviceIntent)
+            Toast.makeText(this, "Floating Popup Stopped", Toast.LENGTH_SHORT).show()
+        } else {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
+            Toast.makeText(this, "PKassist Floating Bubble Started! Ab aap Home/WhatsApp par ja sakte hain.", Toast.LENGTH_LONG).show()
+        }
+        binding.root.postDelayed({ updateServiceStatusUI() }, 300)
+    }
+
     private fun handleUserCommand(command: String) {
-        appendChat("You: $command")
+        appendChat("🧑 You: $command")
         val apiKey = getSavedApiKey()
         lifecycleScope.launch {
             val result = commandProcessor.process(command, apiKey)
-            val tag = if (result.usedOnlineGemini) "[Gemini Lite]" else "[Offline Engine]"
-            appendChat("PKassist $tag: ${result.spokenReply}\n")
+            appendChat("🤖 PKassist [${result.engineTag}]: ${result.spokenReply}\n")
             speakOut(result.spokenReply)
         }
     }
@@ -103,41 +172,55 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun checkForGitHubUpdate(silentIfUpToDate: Boolean) {
         lifecycleScope.launch {
             val release = updateManager.checkForUpdates()
-            if (release != null) {
+            if (release != null && release.isNewer) {
                 AlertDialog.Builder(this@MainActivity)
-                    .setTitle("New Update v${release.versionName} Available!")
-                    .setMessage("A new release was pushed to PKYcodes/PKassist.\n\n${release.releaseNotes}")
+                    .setTitle("🚀 New Update v${release.versionName} Available!")
+                    .setMessage("Current: v${BuildConfig.VERSION_NAME} → Latest: v${release.versionName}\n\n${release.releaseNotes}")
                     .setPositiveButton("Download & Install") { _, _ ->
                         updateManager.downloadAndInstallApk(release)
-                        Toast.makeText(this@MainActivity, "Downloading APK...", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@MainActivity, "Downloading v${release.versionName} APK...", Toast.LENGTH_LONG).show()
                     }
                     .setNegativeButton("Later", null)
                     .show()
             } else if (!silentIfUpToDate) {
-                Toast.makeText(
-                    this@MainActivity,
-                    "PKassist v${BuildConfig.VERSION_NAME} is up to date!",
-                    Toast.LENGTH_SHORT
-                ).show()
+                val latestVer = release?.versionName ?: BuildConfig.VERSION_NAME
+                AlertDialog.Builder(this@MainActivity)
+                    .setTitle("PKassist Update Status")
+                    .setMessage("Installed Version: v${BuildConfig.VERSION_NAME}\nLatest GitHub Release: v$latestVer\n\nAapka app latest version par hai! Phir bhi reinstall karna chahein to Re-Download dabayein.")
+                    .setPositiveButton("OK", null)
+                    .apply {
+                        if (release != null) {
+                            setNeutralButton("Re-Download APK") { _, _ ->
+                                updateManager.downloadAndInstallApk(release)
+                            }
+                        }
+                    }
+                    .show()
             }
         }
     }
 
     private fun showApiKeyDialog() {
         val input = EditText(this).apply {
-            hint = "Paste free Gemini API Key (AI Studio)"
+            hint = "AIzaSy... (Google AI Studio Key)"
             setText(getSavedApiKey())
+            setPadding(40, 30, 40, 30)
         }
         AlertDialog.Builder(this)
             .setTitle("Gemini Free-Tier API Key")
-            .setMessage("Uses low-demand gemini-2.5-flash-lite / gemini-2.0-flash-lite for high free quota.")
+            .setMessage("Note: Google AI Studio ki key 'AIzaSy...' se shuru hoti hai (aistudio.google.com/apikey). Bina key ke bhi PKassist ka Offline NLU aur Free Online AI kaam karega!")
             .setView(input)
             .setPositiveButton("Save") { _, _ ->
+                val entered = input.text.toString().trim()
                 getSharedPreferences("pkassist_prefs", MODE_PRIVATE)
                     .edit()
-                    .putString("gemini_api_key", input.text.toString().trim())
+                    .putString("gemini_api_key", entered)
                     .apply()
-                Toast.makeText(this, "API Key Saved!", Toast.LENGTH_SHORT).show()
+                if (entered.isNotEmpty() && !entered.startsWith("AIza")) {
+                    Toast.makeText(this, "Saved! (Tip: Valid Gemini API key 'AIza...' se start hoti hai)", Toast.LENGTH_LONG).show()
+                } else {
+                    Toast.makeText(this, "Gemini API Key Saved!", Toast.LENGTH_SHORT).show()
+                }
             }
             .setNegativeButton("Cancel", null)
             .show()
@@ -154,7 +237,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         speechRecognizer = SpeechRecognizer.createSpeechRecognizer(this).apply {
             setRecognitionListener(object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {
-                    binding.btnMic.text = "Listening..."
+                    binding.btnMic.text = "🔴 Bolें..."
                 }
                 override fun onBeginningOfSpeech() {}
                 override fun onRmsChanged(rmsdB: Float) {}
@@ -182,7 +265,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
             putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault())
-            // Supports offline speech recognition when language pack is downloaded on device
             putExtra(RecognizerIntent.EXTRA_PREFER_OFFLINE, false)
         }
         speechRecognizer?.startListening(intent)
@@ -210,7 +292,6 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             Manifest.permission.RECORD_AUDIO,
             Manifest.permission.CALL_PHONE,
             Manifest.permission.READ_CONTACTS,
-            Manifest.permission.SEND_SMS,
             Manifest.permission.CAMERA
         )
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {

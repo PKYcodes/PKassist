@@ -1,4 +1,4 @@
-name: PKassist Auto-Version & Release CI
+name: PKassist Pro Auto-Version & Signed Release CI
 
 on:
   push:
@@ -28,14 +28,23 @@ jobs:
       - name: Calculate Next Version Automatically
         id: version
         run: |
-          VERSION_CODE=$((100 + GITHUB_RUN_NUMBER))
-          VERSION_NAME="1.0.${GITHUB_RUN_NUMBER}"
+          VERSION_CODE=$((200 + GITHUB_RUN_NUMBER))
+          VERSION_NAME="2.0.${GITHUB_RUN_NUMBER}"
           echo "VERSION_CODE=${VERSION_CODE}" >> $GITHUB_ENV
           echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
           echo "version_name=${VERSION_NAME}" >> $GITHUB_OUTPUT
-          echo "Building PKassist v${VERSION_NAME} (code ${VERSION_CODE})"
+          echo "Building PKassist Pro v${VERSION_NAME} (code ${VERSION_CODE})"
 
-      - name: Grant Execute Permission for Gradlew
+      - name: Generate Release Keystore for V1+V2 APK Signing
+        run: |
+          keytool -genkeypair -v \
+            -keystore app/release.keystore \
+            -alias pkassist_key \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass pkassist123 -keypass pkassist123 \
+            -dname "CN=PKassist, OU=RVGroup, O=RVGroupLtd, L=Muzaffarpur, S=Bihar, C=IN"
+
+      - name: Prepare Gradle Wrapper
         run: |
           if [ -f "./gradlew" ]; then
             chmod +x ./gradlew
@@ -44,29 +53,29 @@ jobs:
             chmod +x ./gradlew
           fi
 
-      - name: Build Release APK with Auto-Version
+      - name: Build Signed Release APK
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
-          ./gradlew assembleDebug \
+          ./gradlew assembleRelease \
             -PversionCode=${VERSION_CODE} \
             -PversionName=${VERSION_NAME} \
             -PgeminiApiKey="${GEMINI_API_KEY}"
 
-      - name: Rename APK for Distribution
+      - name: Copy Signed APK for Release
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk PKassist-v${VERSION_NAME}.apk
+          cp app/build/outputs/apk/release/app-release.apk PKassist-v${VERSION_NAME}.apk
 
-      - name: Create GitHub Release & Upload APK
+      - name: Create GitHub Release & Upload Signed APK
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version_name }}
-          name: "PKassist v${{ steps.version.outputs.version_name }}"
+          name: "PKassist Pro v${{ steps.version.outputs.version_name }}"
           body: |
-            ### PKassist v${{ steps.version.outputs.version_name }} Auto-Release
+            ### PKassist Pro v${{ steps.version.outputs.version_name }} (Signed Release)
+            - **Floating Popup & Background Service**: Always-on floating PK bubble & mini command popup over all apps.
+            - **Multi-Step Hinglish & Offline NLU**: Supports WhatsApp automation, Alarms (`alarm lagao 2:40`), Fuzzy Screen Tap/Type, Calls, YouTube, and System controls.
             - **Commit**: `${{ github.sha }}`
-            - **Message**: ${{ github.event.head_commit.message }}
-            - **Auto-Update**: Existing PKassist installations will automatically detect this release, notify the user, and download `PKassist-v${{ steps.version.outputs.version_name }}.apk`.
             
             *— powered by RV GROUP —*
           files: PKassist-v${{ steps.version.outputs.version_name }}.apk
