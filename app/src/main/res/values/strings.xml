@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">PKassist</string>
+    <string name="accessibility_service_description">Allows PKassist to type text into inputs, tap buttons, scroll screens, and automate tasks across all apps online and offline.</string>
+</resources>
