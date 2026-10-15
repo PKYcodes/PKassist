@@ -11,6 +11,8 @@ import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.speech.tts.TextToSpeech
+import android.text.InputType
+import android.view.WindowManager
 import android.widget.EditText
 import android.widget.ScrollView
 import android.widget.Toast
@@ -38,6 +40,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableLockScreenVisibility()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -46,14 +49,26 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         tts = TextToSpeech(this, this)
 
         binding.tvVersionFooter.text =
-            "v${BuildConfig.VERSION_NAME} • Background Popup & GitHub Auto-Update (PKYcodes/PKassist)"
+            "v${BuildConfig.VERSION_NAME} • Gemini Glass & Lock-Screen Voice Unlock (PKYcodes/PKassist)"
 
         requestEssentialPermissions()
         setupSpeechRecognizer()
         setupListeners()
 
-        // Check GitHub Releases automatically on startup
         checkForGitHubUpdate(silentIfUpToDate = true)
+    }
+
+    private fun enableLockScreenVisibility() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            setShowWhenLocked(true)
+            setTurnScreenOn(true)
+        } else {
+            @Suppress("DEPRECATION")
+            window.addFlags(
+                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED or
+                    WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+            )
+        }
     }
 
     override fun onResume() {
@@ -64,19 +79,19 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
     private fun updateServiceStatusUI() {
         val accActive = PKAssistAccessibilityService.isRunning()
         binding.tvAccessibilityStatus.text = if (accActive) {
-            "✅ Screen Control Active"
+            "✅ Screen & Unlock Engine ON"
         } else {
-            "⚠️ Screen Control Off"
+            "⚠️ Screen Engine Off"
         }
-        binding.btnEnableAccessibility.text = if (accActive) "Settings" else "Enable Control"
+        binding.btnEnableAccessibility.text = if (accActive) "Settings" else "Enable Engine"
 
         val floatActive = PKFloatingService.isRunning
         binding.tvFloatingStatus.text = if (floatActive) {
-            "🟢 Popup Active"
+            "🟢 Gemini Glass Active"
         } else {
-            "💬 Floating Popup"
+            "✨ Gemini Glass Popup"
         }
-        binding.btnToggleFloating.text = if (floatActive) "Stop Popup" else "Start Popup"
+        binding.btnToggleFloating.text = if (floatActive) "Stop Glass AI" else "Launch Glass AI"
     }
 
     private fun setupListeners() {
@@ -100,6 +115,10 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             toggleFloatingAssistant()
         }
 
+        binding.btnVoicePin.setOnClickListener {
+            showVoicePinSetupDialog()
+        }
+
         binding.btnApiKey.setOnClickListener {
             showApiKeyDialog()
         }
@@ -109,29 +128,53 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             checkForGitHubUpdate(silentIfUpToDate = false)
         }
 
-        // Quick Action Chips
+        // Quick Action Glass Chips
+        binding.chipUnlock.setOnClickListener {
+            handleUserCommand("unlock phone")
+        }
         binding.chipWhatsApp.setOnClickListener {
             binding.etCommand.setText("Rajesh ko WhatsApp per message karo hay likhkar")
             binding.etCommand.setSelection(binding.etCommand.text.length)
+        }
+        binding.chipReadScreen.setOnClickListener {
+            handleUserCommand("screen padho")
         }
         binding.chipAlarm.setOnClickListener {
             handleUserCommand("alarm lagao 6:30")
         }
         binding.chipTorch.setOnClickListener {
             torchState = !torchState
-            handleUserCommand(if (torchState) "flashlight on" else "flashlight off")
+            handleUserCommand(if (torchState) "torch on" else "torch off")
         }
-        binding.chipYouTube.setOnClickListener {
-            binding.etCommand.setText("YouTube par Arijit Singh songs chala do")
-            binding.etCommand.setSelection(binding.etCommand.text.length)
+    }
+
+    private fun showVoicePinSetupDialog() {
+        val prefs = getSharedPreferences("pkassist_prefs", MODE_PRIVATE)
+        val currentPin = prefs.getString("voice_unlock_pin", "") ?: ""
+        val input = EditText(this).apply {
+            hint = "Enter your Lock-Screen PIN / Password (e.g. 1234)"
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD
+            setText(currentPin)
+            setPadding(45, 35, 45, 35)
         }
+        AlertDialog.Builder(this)
+            .setTitle("🔐 Voice Lock-Screen Unlock Setup")
+            .setMessage("Apna phone unlock karne wala PIN ya Password yahan save karein. Jab phone lock hoga aur aap apna PIN ya 'Unlock phone' bolenge, to PKassist screen wake karke swipe karega aur PIN enter karke phone unlock kar dega!")
+            .setView(input)
+            .setPositiveButton("Save PIN") { _, _ ->
+                val pin = input.text.toString().trim()
+                prefs.edit().putString("voice_unlock_pin", pin).apply()
+                Toast.makeText(this, "Voice Unlock PIN Saved!", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
     }
 
     private fun toggleFloatingAssistant() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             AlertDialog.Builder(this)
                 .setTitle("Enable 'Display Over Other Apps'")
-                .setMessage("PKassist ko WhatsApp aur dusre apps ke upar Floating Popup me chalane ke liye Overlay permission on karein.")
+                .setMessage("Gemini-style Glass Popup aur Lock-Screen Voice Assistant chalane ke liye Overlay permission on karein.")
                 .setPositiveButton("Grant Permission") { _, _ ->
                     val intent = Intent(
                         Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
@@ -147,24 +190,30 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val serviceIntent = Intent(this, PKFloatingService::class.java)
         if (PKFloatingService.isRunning) {
             stopService(serviceIntent)
-            Toast.makeText(this, "Floating Popup Stopped", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Gemini Glass Popup Stopped", Toast.LENGTH_SHORT).show()
         } else {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 startForegroundService(serviceIntent)
             } else {
                 startService(serviceIntent)
             }
-            Toast.makeText(this, "PKassist Floating Bubble Started! Ab aap Home/WhatsApp par ja sakte hain.", Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                this,
+                "✨ Gemini Glass Assistant Active! Ab background aur lock-screen dono me aapki aawaz sunega.",
+                Toast.LENGTH_LONG
+            ).show()
         }
         binding.root.postDelayed({ updateServiceStatusUI() }, 300)
     }
 
     private fun handleUserCommand(command: String) {
         appendChat("🧑 You: $command")
+        val prefs = getSharedPreferences("pkassist_prefs", MODE_PRIVATE)
         val apiKey = getSavedApiKey()
+        val savedPin = prefs.getString("voice_unlock_pin", "") ?: ""
         lifecycleScope.launch {
-            val result = commandProcessor.process(command, apiKey)
-            appendChat("🤖 PKassist [${result.engineTag}]: ${result.spokenReply}\n")
+            val result = commandProcessor.process(command, apiKey, savedPin)
+            appendChat("✨ PKassist [${result.engineTag}]: ${result.spokenReply}\n")
             speakOut(result.spokenReply)
         }
     }
@@ -185,8 +234,8 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
             } else if (!silentIfUpToDate) {
                 val latestVer = release?.versionName ?: BuildConfig.VERSION_NAME
                 AlertDialog.Builder(this@MainActivity)
-                    .setTitle("PKassist Update Status")
-                    .setMessage("Installed Version: v${BuildConfig.VERSION_NAME}\nLatest GitHub Release: v$latestVer\n\nAapka app latest version par hai! Phir bhi reinstall karna chahein to Re-Download dabayein.")
+                    .setTitle("PKassist Ultra Update Status")
+                    .setMessage("Installed Version: v${BuildConfig.VERSION_NAME}\nLatest GitHub Release: v$latestVer\n\nAapka app latest version par hai!")
                     .setPositiveButton("OK", null)
                     .apply {
                         if (release != null) {
@@ -204,11 +253,11 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
         val input = EditText(this).apply {
             hint = "AIzaSy... (Google AI Studio Key)"
             setText(getSavedApiKey())
-            setPadding(40, 30, 40, 30)
+            setPadding(45, 35, 45, 35)
         }
         AlertDialog.Builder(this)
             .setTitle("Gemini Free-Tier API Key")
-            .setMessage("Note: Google AI Studio ki key 'AIzaSy...' se shuru hoti hai (aistudio.google.com/apikey). Bina key ke bhi PKassist ka Offline NLU aur Free Online AI kaam karega!")
+            .setMessage("Optional: Google AI Studio key ('AIzaSy...') dalein. Bina key ke bhi PKassist ka Smart NLU aur Free Online AI kaam karta hai!")
             .setView(input)
             .setPositiveButton("Save") { _, _ ->
                 val entered = input.text.toString().trim()
@@ -216,11 +265,7 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                     .edit()
                     .putString("gemini_api_key", entered)
                     .apply()
-                if (entered.isNotEmpty() && !entered.startsWith("AIza")) {
-                    Toast.makeText(this, "Saved! (Tip: Valid Gemini API key 'AIza...' se start hoti hai)", Toast.LENGTH_LONG).show()
-                } else {
-                    Toast.makeText(this, "Gemini API Key Saved!", Toast.LENGTH_SHORT).show()
-                }
+                Toast.makeText(this, "API Key Saved!", Toast.LENGTH_SHORT).show()
             }
             .setNegativeButton("Cancel", null)
             .show()
@@ -243,13 +288,13 @@ class MainActivity : AppCompatActivity(), TextToSpeech.OnInitListener {
                 override fun onRmsChanged(rmsdB: Float) {}
                 override fun onBufferReceived(buffer: ByteArray?) {}
                 override fun onEndOfSpeech() {
-                    binding.btnMic.text = "🎤 Speak"
+                    binding.btnMic.text = "✨ Speak"
                 }
                 override fun onError(error: Int) {
-                    binding.btnMic.text = "🎤 Speak"
+                    binding.btnMic.text = "✨ Speak"
                 }
                 override fun onResults(results: Bundle?) {
-                    binding.btnMic.text = "🎤 Speak"
+                    binding.btnMic.text = "✨ Speak"
                     val spoken = results?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)?.firstOrNull()
                     if (!spoken.isNullOrBlank()) {
                         handleUserCommand(spoken)

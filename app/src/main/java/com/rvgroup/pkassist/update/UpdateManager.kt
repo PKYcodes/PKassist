@@ -96,7 +96,7 @@ class UpdateManager(private val context: Context) {
 
         val notification = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle("PKassist Pro v${release.versionName} Available!")
+            .setContentTitle("PKassist Ultra v${release.versionName} Available!")
             .setContentText("New GitHub push built. Open PKassist and tap Update to install.")
             .setStyle(NotificationCompat.BigTextStyle().bigText(release.releaseNotes))
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -113,7 +113,7 @@ class UpdateManager(private val context: Context) {
 
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val request = DownloadManager.Request(Uri.parse(release.apkDownloadUrl))
-            .setTitle("Downloading PKassist Pro v${release.versionName}")
+            .setTitle("Downloading PKassist Ultra v${release.versionName}")
             .setDescription("Updating from PKYcodes/PKassist GitHub Release...")
             .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
             .setDestinationInExternalFilesDir(context, Environment.DIRECTORY_DOWNLOADS, fileName)

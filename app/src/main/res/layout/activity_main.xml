@@ -2,15 +2,15 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#0F1218"
+    android:background="#090C12"
     android:orientation="vertical"
     android:padding="14dp">
 
-    <!-- Top Brand Header Card -->
+    <!-- Top Gemini-Glass Brand Header -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_dark_card"
+        android:background="@drawable/bg_glass_card"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:padding="12dp">
@@ -25,47 +25,62 @@
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="12dp"
+            android:layout_marginStart="10dp"
             android:layout_weight="1"
             android:orientation="vertical">
 
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="PKassist Pro"
+                android:text="PKassist Ultra"
                 android:textColor="#FFFFFF"
-                android:textSize="20sp"
+                android:textSize="19sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/tvModeStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="● Smart Offline NLU + Online AI Active"
-                android:textColor="#4CAF50"
+                android:text="✨ Gemini Glass • Lock-Screen &amp; Voice Unlock"
+                android:textColor="#00E5FF"
                 android:textSize="11sp" />
         </LinearLayout>
+
+        <Button
+            android:id="@+id/btnVoicePin"
+            style="@style/Widget.Material3.Button.TextButton"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="🔐 PIN"
+            android:textColor="#FFD54F"
+            android:textSize="11sp" />
 
         <Button
             android:id="@+id/btnApiKey"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
-            android:layout_height="38dp"
-            android:text="🔑 Key"
+            android:layout_height="36dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
+            android:text="🔑 AI Key"
             android:textColor="#ECEFF4"
-            android:textSize="12sp" />
+            android:textSize="11sp" />
 
         <Button
             android:id="@+id/btnCheckUpdate"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
-            android:layout_height="38dp"
+            android:layout_height="36dp"
+            android:insetTop="0dp"
+            android:insetBottom="0dp"
             android:text="⬇ Update"
             android:textColor="#F26522"
-            android:textSize="12sp" />
+            android:textSize="11sp" />
     </LinearLayout>
 
-    <!-- Control Center: Accessibility + Floating Background Popup Toggles -->
+    <!-- 2-Column Glass Control Center: Accessibility + Gemini Glass Background Service -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -73,14 +88,13 @@
         android:orientation="horizontal"
         android:weightSum="2">
 
-        <!-- Card 1: Accessibility Control -->
+        <!-- Card 1: Accessibility & Voice Unlock -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="4dp"
             android:layout_weight="1"
-            android:background="@drawable/bg_dark_card"
-            android:gravity="center_vertical"
+            android:background="@drawable/bg_glass_card"
             android:orientation="vertical"
             android:padding="10dp">
 
@@ -88,8 +102,8 @@
                 android:id="@+id/tvAccessibilityStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="⚠️ Screen Control Off"
-                android:textColor="#ECEFF4"
+                android:text="⚠️ Screen Engine Off"
+                android:textColor="#FFFFFF"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
@@ -97,8 +111,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Auto-type, click &amp; WhatsApp"
-                android:textColor="#9AA5B1"
+                android:text="Auto-Unlock, Type &amp; Click"
+                android:textColor="#B0BEC5"
                 android:textSize="10sp" />
 
             <Button
@@ -109,19 +123,18 @@
                 android:backgroundTint="#F26522"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="Enable Control"
+                android:text="Enable Engine"
                 android:textColor="#FFFFFF"
                 android:textSize="11sp" />
         </LinearLayout>
 
-        <!-- Card 2: Floating Popup & Background Mode -->
+        <!-- Card 2: Gemini Glass Popup & 24/7 Lock-Screen Mic -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginStart="4dp"
             android:layout_weight="1"
-            android:background="@drawable/bg_dark_card"
-            android:gravity="center_vertical"
+            android:background="@drawable/bg_glass_card"
             android:orientation="vertical"
             android:padding="10dp">
 
@@ -129,8 +142,8 @@
                 android:id="@+id/tvFloatingStatus"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="💬 Floating Popup"
-                android:textColor="#ECEFF4"
+                android:text="✨ Gemini Glass Popup"
+                android:textColor="#FFFFFF"
                 android:textSize="12sp"
                 android:textStyle="bold" />
 
@@ -138,8 +151,8 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="2dp"
-                android:text="Use PKassist over any app"
-                android:textColor="#9AA5B1"
+                android:text="24/7 Background + Lock Mic"
+                android:textColor="#B0BEC5"
                 android:textSize="10sp" />
 
             <Button
@@ -147,16 +160,16 @@
                 android:layout_width="match_parent"
                 android:layout_height="34dp"
                 android:layout_marginTop="6dp"
-                android:backgroundTint="#2E7D32"
+                android:backgroundTint="#7C4DFF"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="Start Popup"
+                android:text="Launch Glass AI"
                 android:textColor="#FFFFFF"
                 android:textSize="11sp" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Quick Action Chips Horizontal Bar -->
+    <!-- Quick Action Glass Chips -->
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -169,15 +182,42 @@
             android:orientation="horizontal">
 
             <Button
+                android:id="@+id/chipUnlock"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_glass_chip"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="🔓 Test Voice Unlock"
+                android:textColor="#FFD54F"
+                android:textSize="11sp" />
+
+            <Button
                 android:id="@+id/chipWhatsApp"
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="34dp"
                 android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_glass_chip"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="💬 WhatsApp Msg"
+                android:text="💬 WhatsApp Auto"
                 android:textColor="#ECEFF4"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/chipReadScreen"
+                style="@style/Widget.Material3.Button.OutlinedButton"
+                android:layout_width="wrap_content"
+                android:layout_height="34dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_glass_chip"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="👁 Read Screen"
+                android:textColor="#00E5FF"
                 android:textSize="11sp" />
 
             <Button
@@ -186,9 +226,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="34dp"
                 android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_glass_chip"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="⏰ Set Alarm"
+                android:text="⏰ Alarm 6:30"
                 android:textColor="#ECEFF4"
                 android:textSize="11sp" />
 
@@ -197,27 +238,16 @@
                 style="@style/Widget.Material3.Button.OutlinedButton"
                 android:layout_width="wrap_content"
                 android:layout_height="34dp"
-                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_glass_chip"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="🔦 Torch Toggle"
-                android:textColor="#ECEFF4"
-                android:textSize="11sp" />
-
-            <Button
-                android:id="@+id/chipYouTube"
-                style="@style/Widget.Material3.Button.OutlinedButton"
-                android:layout_width="wrap_content"
-                android:layout_height="34dp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:text="▶ YouTube Search"
+                android:text="🔦 Torch"
                 android:textColor="#ECEFF4"
                 android:textSize="11sp" />
         </LinearLayout>
     </HorizontalScrollView>
 
-    <!-- Conversation Log Card -->
+    <!-- Glass Conversation Log -->
     <ScrollView
         android:id="@+id/scrollChat"
         android:layout_width="match_parent"
@@ -225,7 +255,7 @@
         android:layout_marginTop="8dp"
         android:layout_marginBottom="8dp"
         android:layout_weight="1"
-        android:background="@drawable/bg_dark_card"
+        android:background="@drawable/bg_glass_card"
         android:padding="14dp">
 
         <TextView
@@ -233,12 +263,12 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:lineSpacingExtra="5dp"
-            android:text="🤖 PKassist Pro v2.0 Ready!\n\nAb aap single ya multi-step commands bol ya likh sakte hain:\n• 'Rajesh ko WhatsApp per message karo hay likhkar'\n• 'Open WhatsApp and search Rajesh'\n• 'Alarm lagao 2:40'\n• 'Send button per tap karo' (Floating Popup se kisi bhi app ke upar)\n• 'YouTube par Arijit Singh chala do'\n"
+            android:text="✨ PKassist Ultra v3.0 (Gemini Glass Edition)\n\n1. 🔓 Voice Device Unlock: Upar '🔐 PIN' daba kar apna Lock-Screen PIN save karein. Jab phone lock ho, tab 'Unlock phone' ya 'Password 1234' bolein—PKassist screen on karke swipe karega aur PIN daba kar phone unlock kar dega!\n2. 💬 Gemini Glass Popup: 'Launch Glass AI' dabayein—Google Gemini jaisa glowing glass popup har app aur lock screen ke upar chalega aur background me hamesha aapki aawaz sunega.\n3. 🧠 Smart Commands: WhatsApp message, Call, Alarm, YouTube, Volume, Torch, Screen Reading, aur har sawal ka jawab!\n"
             android:textColor="#ECEFF4"
-            android:textSize="14sp" />
+            android:textSize="13.5sp" />
     </ScrollView>
 
-    <!-- High-Contrast Command Input & Voice Bar -->
+    <!-- Bottom Glass Input & Gemini Orb Mic Bar -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -250,13 +280,13 @@
             android:layout_width="0dp"
             android:layout_height="48dp"
             android:layout_weight="1"
-            android:background="@drawable/bg_input_box"
-            android:hint="Hinglish / Hindi / English command..."
+            android:background="@drawable/bg_glass_input"
+            android:hint="Ask anything or give any command..."
             android:imeOptions="actionSend"
             android:inputType="text"
             android:paddingHorizontal="16dp"
             android:textColor="#FFFFFF"
-            android:textColorHint="#8892B0"
+            android:textColorHint="#90A4AE"
             android:textSize="14sp" />
 
         <Button
@@ -264,7 +294,7 @@
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:layout_marginStart="6dp"
-            android:backgroundTint="#2E3440"
+            android:backgroundTint="#263238"
             android:text="Send"
             android:textColor="#FFFFFF" />
 
@@ -273,8 +303,8 @@
             android:layout_width="wrap_content"
             android:layout_height="48dp"
             android:layout_marginStart="6dp"
-            android:backgroundTint="#F26522"
-            android:text="🎤 Speak"
+            android:background="@drawable/bg_gemini_orb"
+            android:text="✨ Speak"
             android:textColor="#FFFFFF" />
     </LinearLayout>
 
@@ -303,8 +333,8 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="3dp"
-            android:text="v2.0.1 • Background Popup &amp; GitHub Auto-Update Active"
-            android:textColor="#8892B0"
+            android:text="v3.0.1 • Gemini Glass Popup &amp; Lock-Screen Voice Unlock Active"
+            android:textColor="#90A4AE"
             android:textSize="10sp" />
     </LinearLayout>
 

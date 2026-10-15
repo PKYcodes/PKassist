@@ -8,12 +8,15 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
-    <!-- Floating Overlay Popup & Always-On Background Service -->
+    <!-- Glass Overlay, Lock-Screen Wake & Always-On Background Voice Listening -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.DISABLE_KEYGUARD" />
 
-    <!-- Assistant Capabilities (Voice, Calls, Contacts, Alarms, Flashlight, Apps) -->
+    <!-- Assistant Capabilities -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.CALL_PHONE" />
     <uses-permission android:name="android.permission.READ_CONTACTS" />
@@ -33,6 +36,8 @@
         <activity
             android:name=".MainActivity"
             android:exported="true"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
             android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -42,24 +47,28 @@
                 <action android:name="android.intent.action.ASSIST" />
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VOICE_COMMAND" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
         </activity>
 
-        <!-- Always-On Floating Popup & Background Voice Assistant Service -->
+        <!-- Always-On Gemini-Style Glass Overlay & Lock-Screen Voice Listener Service -->
         <service
             android:name=".service.PKFloatingService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="specialUse">
+            android:foregroundServiceType="microphone|specialUse">
             <property
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
-                android:value="floating_ai_assistant_overlay" />
+                android:value="gemini_style_glass_voice_assistant" />
         </service>
 
-        <!-- Accessibility Service for Cross-App Typing, Clicking, WhatsApp Automation & Navigation -->
+        <!-- Accessibility Service for Voice PIN Unlock, Typing, Clicking & Cross-App Automation -->
         <service
             android:name=".service.PKAssistAccessibilityService"
             android:exported="true"
-            android:label="PKassist Pro Screen Automation"
+            android:label="PKassist Ultra Screen &amp; Unlock Engine"
             android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService" />

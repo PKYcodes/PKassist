@@ -1,4 +1,4 @@
 <resources>
     <string name="app_name">PKassist</string>
-    <string name="accessibility_service_description">Allows PKassist Pro to type into apps, click buttons (like Send), search inside apps, and execute multi-step commands across your phone.</string>
+    <string name="accessibility_service_description">Enables PKassist Ultra to unlock your device via spoken PIN/password, type text, click buttons, read screen content, and automate tasks across all apps.</string>
 </resources>

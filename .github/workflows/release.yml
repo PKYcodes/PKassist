@@ -1,4 +1,4 @@
-name: PKassist Pro Auto-Version & Signed Release CI
+name: PKassist v3 Ultra Auto-Version & Signed Release CI
 
 on:
   push:
@@ -28,12 +28,12 @@ jobs:
       - name: Calculate Next Version Automatically
         id: version
         run: |
-          VERSION_CODE=$((200 + GITHUB_RUN_NUMBER))
-          VERSION_NAME="2.0.${GITHUB_RUN_NUMBER}"
+          VERSION_CODE=$((300 + GITHUB_RUN_NUMBER))
+          VERSION_NAME="3.0.${GITHUB_RUN_NUMBER}"
           echo "VERSION_CODE=${VERSION_CODE}" >> $GITHUB_ENV
           echo "VERSION_NAME=${VERSION_NAME}" >> $GITHUB_ENV
           echo "version_name=${VERSION_NAME}" >> $GITHUB_OUTPUT
-          echo "Building PKassist Pro v${VERSION_NAME} (code ${VERSION_CODE})"
+          echo "Building PKassist Ultra v${VERSION_NAME} (code ${VERSION_CODE})"
 
       - name: Generate Release Keystore for V1+V2 APK Signing
         run: |
@@ -70,12 +70,13 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version_name }}
-          name: "PKassist Pro v${{ steps.version.outputs.version_name }}"
+          name: "PKassist Ultra v${{ steps.version.outputs.version_name }} (Gemini Glass Edition)"
           body: |
-            ### PKassist Pro v${{ steps.version.outputs.version_name }} (Signed Release)
-            - **Floating Popup & Background Service**: Always-on floating PK bubble & mini command popup over all apps.
-            - **Multi-Step Hinglish & Offline NLU**: Supports WhatsApp automation, Alarms (`alarm lagao 2:40`), Fuzzy Screen Tap/Type, Calls, YouTube, and System controls.
-            - **Commit**: `${{ github.sha }}`
+            ### PKassist Ultra v${{ steps.version.outputs.version_name }} — Gemini Glass & Voice Unlock Edition
+            - **Gemini-Style Glassmorphism Bottom Popup**: Sleek frosted glass overlay with neon gradient border, live voice transcript, and quick chips over any app.
+            - **24/7 Background & Lock-Screen Listening**: Listens continuously in background and on the lock screen (wake word `"Hey PK"` or direct voice commands).
+            - **Voice PIN / Password Device Unlock**: Speak your PIN/Password (`"unlock 1234"` or `"PK unlock"`) to wake the screen, swipe up the lock screen, and auto-enter your PIN via Accessibility.
+            - **Extreme Hinglish & Screen-Context AI Engine**: 30+ offline & online actions including WhatsApp end-to-end messaging, Screen reading, Fuzzy button clicks, Alarms, Calls, YouTube, Volume, and System controls.
             
             *— powered by RV GROUP —*
           files: PKassist-v${{ steps.version.outputs.version_name }}.apk

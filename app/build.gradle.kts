@@ -3,8 +3,8 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
-val dynamicVersionCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 201
-val dynamicVersionName = project.findProperty("versionName")?.toString() ?: "2.0.1"
+val dynamicVersionCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 301
+val dynamicVersionName = project.findProperty("versionName")?.toString() ?: "3.0.1"
 val defaultGeminiKey = project.findProperty("geminiApiKey")?.toString() ?: ""
 
 android {

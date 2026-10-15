@@ -1,19 +1,17 @@
-# PKassist v2.0 Pro — Floating Background AI Assistant
+# PKassist v3.0 Ultra — Gemini Glass & Voice Unlock Edition
 
 **— powered by RV GROUP —**
 
-### What's Fixed & Upgraded in v2.0 Pro
+### Extreme Features in v3.0 Ultra
 
-1. **Always-On Floating Popup & Background Service (`PKFloatingService.kt`)**
-   - Tap **Start Popup** inside the app to launch a draggable **PK** floating bubble that stays over WhatsApp, Instagram, YouTube, Chrome, and the Homescreen.
-   - Tapping the bubble opens the **PKassist Live Popup** with Mic (🎤) and command input. Before executing screen taps or typing, the popup automatically minimizes so your command acts directly on the app underneath!
+1. **Gemini-Style Glassmorphism Bottom Sheet Popup (`layout_floating_widget.xml` & `PKFloatingService.kt`)**
+   - Docked at the bottom of your screen with frosted dark glass (`#EB121622`) and a neon Orange-Purple-Cyan glowing border (`bg_gemini_glass_sheet.xml`) — just like Google Gemini's overlay.
+   - Displays live real-time speech transcription (`onPartialResults`) as you speak, plus quick glass chips (`🔓 Unlock`, `👁 Read Screen`, `➤ Tap Send`).
 
-2. **Multi-Step & Hinglish NLU Engine (`CommandProcessor.kt`)**
-   - **WhatsApp Direct Automation**: `"Rajesh ko WhatsApp per message karo hay likhkar"` or `"Open WhatsApp and search Rajesh"` — opens WhatsApp, searches the contact or deep-links to their phone number, types the message, and taps Send via Accessibility.
-   - **Alarms**: `"alarm lagao 2:40"` or `"set alarm for 6:30 am"` — directly sets the system clock alarm via `AlarmClock.ACTION_SET_ALARM`.
-   - **Fuzzy Screen Tap / Click**: `"tap on sand button"`, `"send button per tap karo"`, `"click search"` — strips filler words (`on`, `button`, `per`, `par`, `ko`), fixes phonetic typos (`sand` -> `send`), and clicks matching text or icon `contentDescription`.
-   - **YouTube, Google, Volume, Torch, Screenshot**: `"YouTube par Arijit Singh chala do"`, `"volume badhao"`, `"screenshot lo"`, `"torch on"`.
-   - **Keyless Free Online AI Fallback**: Works online even without an `AIzaSy...` key, while supporting your Google AI Studio key for Gemini 2.5 Flash-Lite.
+2. **24/7 Background & Lock-Screen Voice Listening**
+   - Uses `foregroundServiceType="microphone|specialUse"` + `PARTIAL_WAKE_LOCK` + `FLAG_SHOW_WHEN_LOCKED` so PKassist listens continuously in the background and on the lock screen.
+   - Trigger anytime by saying `"Hey PK"`, `"PK"`, or speaking a direct command like `"Unlock phone"`, `"Torch on"`, or `"Rajesh ko WhatsApp karo"`.
 
-3. **Signed Release APK in GitHub Actions (`.github/workflows/release.yml`)**
-   - Generates a V1+V2 signed release keystore (`assembleRelease`) and removes raw `SEND_SMS` trojan-flagged permissions to avoid Google Play Protect blocks.
+3. **Voice PIN / Password Device Unlock (`unlockDeviceWithPin`)**
+   - Save your Lock-Screen PIN/Password via the **🔐 PIN** button in the top bar (or speak `"Unlock 1234"` directly).
+   - When triggered on a locked phone, PKassist wakes the screen (`FULL_WAKE_LOCK | ACQUIRE_CAUSES_WAKEUP`), swipes up the lock screen, automatically taps each digit of your PIN on the SystemUI Keyguard keypad (`id/key1`, `id/key2`, etc.) or fills the password field, and taps Enter to unlock the device hands-free!

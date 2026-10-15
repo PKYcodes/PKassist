@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Outer Gemini-style Neon/Orange-Cyan Glow Border -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="45"
+                android:startColor="#F26522"
+                android:centerColor="#7C4DFF"
+                android:endColor="#00E5FF"
+                android:type="linear" />
+            <corners android:radius="28dp" />
+        </shape>
+    </item>
+    <!-- Inner Frosted Dark Glass Surface -->
+    <item
+        android:bottom="2dp"
+        android:left="2dp"
+        android:right="2dp"
+        android:top="2dp">
+        <shape android:shape="rectangle">
+            <gradient
+                android:angle="135"
+                android:startColor="#EB121622"
+                android:endColor="#F20B0E17"
+                android:type="linear" />
+            <corners android:radius="26dp" />
+        </shape>
+    </item>
+</layer-list>

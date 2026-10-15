@@ -1,36 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="wrap_content"
+    android:layout_width="match_parent"
     android:layout_height="wrap_content">
 
-    <!-- Collapsed Draggable Bubble -->
+    <!-- Minimized Draggable Glass Edge Orb -->
     <LinearLayout
         android:id="@+id/bubbleContainer"
-        android:layout_width="58dp"
-        android:layout_height="58dp"
-        android:background="@drawable/bg_floating_bubble"
-        android:elevation="8dp"
+        android:layout_width="56dp"
+        android:layout_height="56dp"
+        android:background="@drawable/bg_floating_edge_pill"
+        android:elevation="12dp"
         android:gravity="center"
         android:orientation="vertical">
 
         <ImageView
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:contentDescription="PK Bubble"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:contentDescription="PK Glass Orb"
             android:src="@mipmap/ic_launcher_round" />
     </LinearLayout>
 
-    <!-- Expanded Mini Popup AI Assistant Card (Appears over WhatsApp / any app) -->
+    <!-- Expanded Gemini-Style Bottom Glassmorphism Popup Sheet -->
     <LinearLayout
         android:id="@+id/expandedPanel"
-        android:layout_width="300dp"
+        android:layout_width="340dp"
         android:layout_height="wrap_content"
-        android:background="@drawable/bg_floating_panel"
-        android:elevation="12dp"
+        android:background="@drawable/bg_gemini_glass_sheet"
+        android:elevation="20dp"
         android:orientation="vertical"
-        android:padding="12dp"
+        android:padding="16dp"
         android:visibility="gone">
 
+        <!-- Top Handle & Header Row -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -38,66 +39,151 @@
             android:orientation="horizontal">
 
             <ImageView
-                android:layout_width="28dp"
-                android:layout_height="28dp"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
                 android:src="@mipmap/ic_launcher_round" />
 
-            <TextView
+            <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="8dp"
+                android:layout_marginStart="10dp"
                 android:layout_weight="1"
-                android:text="PKassist Live Popup"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="PKassist Live"
+                    android:textColor="#FFFFFF"
+                    android:textSize="15sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/tvAlwaysListenBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="🟢 Background &amp; Lock-Screen Listening ON"
+                    android:textColor="#00E5FF"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnPopupAlwaysToggle"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="30dp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:text="24/7 Mic"
+                android:textColor="#FFD54F"
+                android:textSize="10sp" />
 
             <Button
                 android:id="@+id/btnPopupMinimize"
                 style="@style/Widget.Material3.Button.TextButton"
-                android:layout_width="40dp"
-                android:layout_height="32dp"
+                android:layout_width="36dp"
+                android:layout_height="30dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:text="✕"
-                android:textColor="#F26522"
+                android:textColor="#FFFFFF"
                 android:textSize="14sp" />
         </LinearLayout>
 
+        <!-- Live Transcript / AI Response Display (Just like Gemini Overlay) -->
         <TextView
             android:id="@+id/tvPopupStatus"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="6dp"
-            android:text="Boliye ya type karein (current app par kaam karega):"
-            android:textColor="#D8DEE9"
-            android:textSize="12sp" />
+            android:layout_marginTop="10dp"
+            android:layout_marginBottom="8dp"
+            android:background="@drawable/bg_glass_chip"
+            android:minHeight="48dp"
+            android:padding="10dp"
+            android:text="✨ Boliye: 'Hey PK', 'Unlock phone', 'Rajesh ko WhatsApp karo', ya koi bhi sawal puchhein..."
+            android:textColor="#FFFFFF"
+            android:textSize="13sp" />
 
+        <!-- Quick Glass Chips Inside Popup -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnQuickUnlock"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_glass_chip"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:paddingHorizontal="10dp"
+                    android:text="🔓 Unlock"
+                    android:textColor="#FFD54F"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btnQuickRead"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:layout_marginEnd="6dp"
+                    android:background="@drawable/bg_glass_chip"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:paddingHorizontal="10dp"
+                    android:text="👁 Read Screen"
+                    android:textColor="#00E5FF"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btnQuickSendTap"
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="30dp"
+                    android:background="@drawable/bg_glass_chip"
+                    android:insetTop="0dp"
+                    android:insetBottom="0dp"
+                    android:paddingHorizontal="10dp"
+                    android:text="➤ Tap Send"
+                    android:textColor="#ECEFF4"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- Input Bar & Glowing Gemini Mic Orb -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
             <EditText
                 android:id="@+id/etPopupCommand"
                 android:layout_width="0dp"
-                android:layout_height="40dp"
+                android:layout_height="42dp"
                 android:layout_weight="1"
-                android:background="@drawable/bg_input_box"
-                android:hint="e.g. type hello / tap send"
-                android:paddingHorizontal="12dp"
+                android:background="@drawable/bg_glass_input"
+                android:hint="Type or speak to PKassist..."
+                android:paddingHorizontal="14dp"
                 android:textColor="#FFFFFF"
-                android:textColorHint="#8892B0"
-                android:textSize="12sp" />
+                android:textColorHint="#B0BEC5"
+                android:textSize="12.5sp" />
 
             <Button
                 android:id="@+id/btnPopupRun"
                 android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:layout_marginStart="4dp"
-                android:backgroundTint="#2E3440"
+                android:layout_height="42dp"
+                android:layout_marginStart="6dp"
+                android:backgroundTint="#263238"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
                 android:text="Go"
@@ -106,16 +192,17 @@
 
             <Button
                 android:id="@+id/btnPopupMic"
-                android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:layout_marginStart="4dp"
-                android:backgroundTint="#F26522"
+                android:layout_width="52dp"
+                android:layout_height="42dp"
+                android:layout_marginStart="6dp"
+                android:background="@drawable/bg_gemini_orb"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:text="🎤"
+                android:text="✨🎤"
                 android:textColor="#FFFFFF"
                 android:textSize="13sp" />
         </LinearLayout>
+
     </LinearLayout>
 
 </FrameLayout>

@@ -11,6 +11,7 @@ import android.net.Uri
 import android.os.BatteryManager
 import android.provider.AlarmClock
 import android.provider.ContactsContract
+import android.provider.MediaStore
 import android.provider.Settings
 import com.rvgroup.pkassist.BuildConfig
 import com.rvgroup.pkassist.service.PKAssistAccessibilityService
@@ -41,19 +42,29 @@ class CommandProcessor(private val context: Context) {
         .readTimeout(15, TimeUnit.SECONDS)
         .build()
 
-    suspend fun process(rawCommand: String, apiKey: String): AssistantResult = withContext(Dispatchers.IO) {
+    suspend fun process(
+        rawCommand: String,
+        apiKey: String,
+        savedPin: String = ""
+    ): AssistantResult = withContext(Dispatchers.IO) {
         val text = rawCommand.trim()
         if (text.isEmpty()) {
             return@withContext AssistantResult("Kripya koi command bolein ya type karein.", "Offline NLU")
         }
 
-        // 1. Check for direct WhatsApp message pattern first (before splitting by "and")
-        val waDirect = tryWhatsAppDirectCommand(text)
-        if (waDirect != null) {
-            return@withContext AssistantResult(waDirect, "Smart Action")
+        // 0. Check for Voice PIN / Password Device Unlock first!
+        val unlockReply = tryVoiceUnlockCommand(text, savedPin)
+        if (unlockReply != null) {
+            return@withContext AssistantResult(unlockReply, "Voice Unlock")
         }
 
-        // 2. Check for multi-step chained commands: e.g. "open WhatsApp and search Rajesh"
+        // 1. Check for direct WhatsApp message automation
+        val waDirect = tryWhatsAppDirectCommand(text)
+        if (waDirect != null) {
+            return@withContext AssistantResult(waDirect, "WhatsApp Auto")
+        }
+
+        // 2. Check for multi-step chained commands ("open WhatsApp and search Rajesh")
         val steps = splitMultiStepCommands(text)
         if (steps.size > 1) {
             val replies = mutableListOf<String>()
@@ -63,7 +74,6 @@ class CommandProcessor(private val context: Context) {
                     replies.add(stepReply)
                 }
                 if (index < steps.size - 1) {
-                    // Wait for app launch or UI transition before executing the next step
                     delay(1400)
                 }
             }
@@ -72,67 +82,93 @@ class CommandProcessor(private val context: Context) {
             }
         }
 
-        // 3. Single-step Smart Offline/Hinglish NLU Engine
+        // 3. Single-step Extreme Natural Hinglish / Offline NLU Engine
         val offlineMatch = tryOfflineCommand(text)
         if (offlineMatch != null) {
-            return@withContext AssistantResult(offlineMatch, "Offline NLU")
+            return@withContext AssistantResult(offlineMatch, "Smart NLU")
         }
 
-        // 4. Online AI Execution (Gemini API if valid AIza* key, plus keyless free AI fallback)
+        // 4. Online Gemini / Keyless AI with Live Screen Context
         if (isOnline()) {
+            val screenSummary = PKAssistAccessibilityService.instance?.getScreenTextSummary() ?: ""
             if (apiKey.startsWith("AIza")) {
-                val geminiReply = callGeminiWithFallback(text, apiKey)
+                val geminiReply = callGeminiWithScreenContext(text, screenSummary, apiKey, savedPin)
                 if (geminiReply != null) {
-                    return@withContext AssistantResult(geminiReply, "Gemini Lite")
+                    return@withContext AssistantResult(geminiReply, "Gemini Glass AI")
                 }
             }
-            // Keyless free AI fallback so online questions work even if user hasn't set an AIzaSy key!
-            val freeAiReply = callFreeOnlineAssistant(text)
+            val freeAiReply = callFreeOnlineAssistant(text, screenSummary)
             if (freeAiReply != null) {
-                val note = if (apiKey.isNotBlank() && !apiKey.startsWith("AIza")) {
-                    " (Note: Google AI Studio key 'AIzaSy...' se shuru hoti hai)"
-                } else ""
-                return@withContext AssistantResult(freeAiReply + note, "Online AI")
+                return@withContext AssistantResult(freeAiReply, "Online AI")
             }
         }
 
         return@withContext AssistantResult(
-            "Command '$text' ke liye phone abhi offline hai. Offline mode me aap Call, WhatsApp message, Alarm, App Open, Search, Typing, Click, Flashlight, Volume, ya Battery bol sakte hain.",
+            "Phone abhi offline hai. Offline mode me aap Voice Unlock, Call, WhatsApp message, Alarm, App Open, Screen Read, Typing, Click, Torch, Volume, ya Battery bol sakte hain.",
             "Offline NLU"
         )
     }
 
     /**
-     * Splits compound commands like "open WhatsApp and search Rajesh" or "WhatsApp kholo aur Rajesh search karo"
+     * Handles Voice Unlock:
+     * e.g. "unlock phone", "unlock 1234", "mera password 2580 hai", "lock kholo"
      */
+    private suspend fun tryVoiceUnlockCommand(input: String, savedPin: String): String? {
+        val lower = input.lowercase(Locale.ROOT).trim()
+        val isUnlockIntent = lower.contains("unlock") ||
+            lower.contains("lock kholo") ||
+            lower.contains("phone kholo") ||
+            lower.startsWith("password ") ||
+            lower.startsWith("pin ")
+
+        if (!isUnlockIntent) return null
+
+        val acc = PKAssistAccessibilityService.instance
+            ?: return "Voice Unlock ke liye pehle PKassist Screen Engine (Accessibility) on karein."
+
+        // Extract spoken digits/password from command, or fall back to user's saved PIN
+        val spokenDigits = input.filter { it.isDigit() }
+        val pinToUse = when {
+            spokenDigits.isNotEmpty() -> spokenDigits
+            savedPin.isNotEmpty() -> savedPin
+            else -> ""
+        }
+
+        if (pinToUse.isEmpty()) {
+            return "Kripya app ke top bar me '🔐 PIN' button daba kar apna Lock-Screen PIN save karein, ya 'Unlock 1234' bolein."
+        }
+
+        val ok = acc.unlockDeviceWithPin(pinToUse)
+        return if (ok) {
+            "Phone wake karke PIN enter kar diya gaya hai — Device Unlocked!"
+        } else {
+            "Screen wake aur swipe kar diya gaya hai."
+        }
+    }
+
     private fun splitMultiStepCommands(input: String): List<String> {
         return input.split(Regex("\\s+(and then|and|aur fir|aur phir|aur|fir|phir|uske baad)\\s+", RegexOption.IGNORE_CASE))
             .map { it.trim() }
             .filter { it.isNotEmpty() }
     }
 
-    /**
-     * Handles Hinglish/English WhatsApp messaging commands:
-     * - "Rajesh ko WhatsApp per message karo hay likhkar"
-     * - "whatsapp message to Rajesh hello"
-     * - "send whatsapp to 9876543210 namaste"
-     */
     private suspend fun tryWhatsAppDirectCommand(input: String): String? {
         val lower = input.lowercase(Locale.ROOT).trim()
         if (!lower.contains("whatsapp")) return null
 
-        // Pattern A: "<name> ko whatsapp par/per message karo <msg> likhkar" or "<name> ko whatsapp par <msg> bhejo"
-        val hinglishRegex = Regex("^(.+?)\\s+ko\\s+whatsapp\\s+(?:par|per|pe|me|mein)?\\s*(?:message\\s+karo|msg\\s+karo|bhejo|likho)?\\s*(.*)$", RegexOption.IGNORE_CASE)
+        val hinglishRegex = Regex("^(.+?)\\s+ko\\s+whatsapp\\s+(?:par|per|pe|me|mein)?\\s*(?:message\\s+karo|msg\\s+karo|bhejo|bol do|likho)?\\s*(.*)$", RegexOption.IGNORE_CASE)
         val matchA = hinglishRegex.find(input)
         if (matchA != null) {
-            val targetName = matchA.groupValues[1].trim()
+            val targetName = matchA.groupValues[1]
+                .replace(Regex("^(whatsapp khol ke|whatsapp par)\\s+", RegexOption.IGNORE_CASE), "")
+                .trim()
             val msgRaw = matchA.groupValues[2]
+                .replace(Regex("^(ki|ke)\\s+", RegexOption.IGNORE_CASE), "")
                 .replace(Regex("\\s*(likhkar|likh kar|bolkar|bhej do|kar do)$", RegexOption.IGNORE_CASE), "")
                 .trim()
             return sendWhatsAppAutomated(targetName, msgRaw.ifEmpty { "Hi" })
         }
 
-        // Pattern B: "send whatsapp to <name> <msg>" or "whatsapp <name> <msg>"
         val engRegex = Regex("^(?:send\\s+)?whatsapp\\s+(?:message\\s+)?(?:to\\s+)?([a-zA-Z0-9+]+)\\s+(.+)$", RegexOption.IGNORE_CASE)
         val matchB = engRegex.find(input)
         if (matchB != null && !lower.startsWith("open whatsapp")) {
@@ -166,77 +202,129 @@ class CommandProcessor(private val context: Context) {
                 "WhatsApp open karne me dikkat aayi."
             }
         } else {
-            // Contact number not found or user only has name inside WhatsApp -> Open WhatsApp, search name, type msg
             openAppByName("whatsapp")
             delay(1500)
             PKAssistAccessibilityService.instance?.searchInCurrentApp(target)
-            return "WhatsApp khol kar '$target' search kar diya hai."
+            delay(800)
+            if (message.isNotEmpty()) {
+                PKAssistAccessibilityService.instance?.typeTextInFocusedField(message)
+                delay(400)
+                PKAssistAccessibilityService.instance?.clickElementByText("Send")
+            }
+            return "WhatsApp khol kar '$target' search karke '$message' type kar diya hai."
         }
     }
 
     private suspend fun tryOfflineCommand(input: String): String? {
         val lower = input.lowercase(Locale.ROOT).trim()
 
-        // 1. Alarm setting: "alarm lagao 2:40", "set alarm for 6:30 am", "5 baje ka alarm lagao"
+        // 1. Screen Reader ("screen padho", "read screen", "screen par kya likha hai")
+        if (lower.contains("screen padho") || lower.contains("read screen") || lower.contains("screen par kya")) {
+            val summary = PKAssistAccessibilityService.instance?.getScreenTextSummary()
+            return if (!summary.isNullOrBlank()) {
+                "Screen par yeh likha hai: $summary"
+            } else {
+                "Screen padhne ke liye Accessibility Engine on karein."
+            }
+        }
+
+        // 2. Lock Screen ("lock phone", "screen lock karo", "phone band karo")
+        if (lower == "lock phone" || lower.contains("screen lock") || lower == "phone lock karo") {
+            val ok = PKAssistAccessibilityService.instance?.triggerGlobalAction("LOCK_SCREEN") ?: false
+            return if (ok) "Phone lock kar diya gaya hai." else "Screen lock ke liye Accessibility on karein."
+        }
+
+        // 3. Alarm & Timer ("alarm lagao 2:40", "subah 6 baje ka alarm", "5 minute ka timer")
         if (lower.contains("alarm")) {
-            val timeRegex = Regex("(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm)?")
+            val timeRegex = Regex("(\\d{1,2})(?::(\\d{2}))?\\s*(am|pm|baje)?")
             val match = timeRegex.find(lower)
             if (match != null) {
                 var hour = match.groupValues[1].toIntOrNull() ?: 7
                 val minute = match.groupValues[2].toIntOrNull() ?: 0
-                val ampm = match.groupValues[3]
-                if (ampm == "pm" && hour < 12) hour += 12
-                if (ampm == "am" && hour == 12) hour = 0
+                val suffix = match.groupValues[3]
+                if ((suffix == "pm" || lower.contains("shaam") || lower.contains("raat")) && hour < 12) hour += 12
+                if (suffix == "am" && hour == 12) hour = 0
 
                 return try {
                     val alarmIntent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
                         putExtra(AlarmClock.EXTRA_HOUR, hour)
                         putExtra(AlarmClock.EXTRA_MINUTES, minute)
-                        putExtra(AlarmClock.EXTRA_MESSAGE, "PKassist Alarm")
+                        putExtra(AlarmClock.EXTRA_MESSAGE, "PKassist Ultra Alarm")
                         putExtra(AlarmClock.EXTRA_SKIP_UI, false)
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                     context.startActivity(alarmIntent)
                     String.format(Locale.ROOT, "%02d:%02d ka alarm set kar diya gaya hai.", hour, minute)
                 } catch (_: Exception) {
-                    "Phone ke Clock app me alarm set karne ki permission nahi mili."
+                    "Clock app me alarm set karne me dikkat aayi."
                 }
             }
         }
 
-        // 2. Button / Element Click & Tap (Handles both prefix "tap on send button" and suffix "send button per tap/type karo")
-        if (lower.startsWith("click ") || lower.startsWith("tap ") || lower.startsWith("press ") ||
-            lower.endsWith(" पर टैप करो") || lower.endsWith(" पर क्लिक करो") ||
-            Regex(".*\\b(button|batan|icon)\\s+(par|per|pe)\\s+(tap|click|type|press).*").matches(lower) ||
-            Regex(".*\\b(par|per|pe)\\s+(tap|click)\\s+karo$").matches(lower)
-        ) {
-            val ok = PKAssistAccessibilityService.instance?.clickElementByText(lower) ?: false
-            return if (ok) {
-                "Screen button par tap kar diya gaya hai."
-            } else {
-                "Is screen par woh button nahi mila. Agar dusre app par click karwana hai to Floating Popup (💬) use karein."
+        if (lower.contains("timer")) {
+            val num = Regex("(\\d+)").find(lower)?.groupValues?.get(1)?.toIntOrNull() ?: 5
+            val seconds = if (lower.contains("second")) num else num * 60
+            return try {
+                val timerIntent = Intent(AlarmClock.ACTION_SET_TIMER).apply {
+                    putExtra(AlarmClock.EXTRA_LENGTH, seconds)
+                    putExtra(AlarmClock.EXTRA_SKIP_UI, false)
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(timerIntent)
+                "$num minute ka timer chalu kar diya hai."
+            } catch (_: Exception) {
+                "Timer chalu karne me dikkat aayi."
             }
         }
 
-        // 3. Typing automation: "type hello", "likho namaste", "hello type karo"
-        if (lower.startsWith("type ") || lower.startsWith("likho ") || lower.startsWith("write ") || lower.endsWith(" type karo") || lower.endsWith(" likho")) {
+        // 4. Button / Element Click & Tap
+        if (lower.startsWith("click ") || lower.startsWith("tap ") || lower.startsWith("press ") ||
+            lower.startsWith("dabao ") ||
+            Regex(".*\\b(button|batan|icon)\\s+(par|per|pe)\\s+(tap|click|type|press|dabao).*").matches(lower) ||
+            Regex(".*\\b(par|per|pe)\\s+(tap|click)\\s+(karo|kar|do)$").matches(lower)
+        ) {
+            val ok = PKAssistAccessibilityService.instance?.clickElementByText(lower) ?: false
+            return if (ok) "Screen par button click kar diya gaya hai."
+            else "Woh button screen par nahi mila."
+        }
+
+        // 5. Typing automation
+        if (lower.startsWith("type ") || lower.startsWith("likho ") || lower.startsWith("write ") ||
+            lower.endsWith(" type karo") || lower.endsWith(" likh do")
+        ) {
             val content = input
                 .replace(Regex("^(type|likho|write)\\s+", RegexOption.IGNORE_CASE), "")
-                .replace(Regex("\\s+(type karo|likho)$", RegexOption.IGNORE_CASE), "")
+                .replace(Regex("\\s+(type karo|likh do|likho)$", RegexOption.IGNORE_CASE), "")
                 .trim()
             val ok = PKAssistAccessibilityService.instance?.typeTextInFocusedField(content) ?: false
             return if (ok) "Maine '$content' type kar diya hai."
-            else "Koi text box active nahi mila ya Accessibility Control off hai."
+            else "Screen par koi input box active nahi mila."
         }
 
-        // 4. Search inside current app or YouTube/Google: "search Rajesh", "Rajesh search karo", "youtube par X chala do"
-        if (lower.contains("youtube par ") || lower.contains("play on youtube ") || lower.startsWith("youtube search ")) {
+        // 6. Camera / Selfie
+        if (lower.contains("selfie lo") || lower.contains("photo khicho") || lower.contains("take photo")) {
+            return try {
+                val camIntent = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                context.startActivity(camIntent)
+                "Camera khol diya gaya hai."
+            } catch (_: Exception) {
+                openAppByName("camera")
+            }
+        }
+
+        // 7. YouTube & Google Search
+        if (lower.contains("youtube par ") || lower.contains("play on youtube ") || lower.startsWith("youtube ")) {
             val query = lower
                 .replace("youtube par ", "")
                 .replace("play on youtube ", "")
-                .replace("youtube search ", "")
-                .replace(Regex("\\s*(chala do|chalao|search karo|play karo)$"), "")
+                .removePrefix("youtube ")
+                .replace(Regex("\\s*(chala do|chalao|search karo|play karo|lagao)$"), "")
                 .trim()
+            if (query.isEmpty() || query == "kholo" || query == "open") {
+                return openAppByName("youtube")
+            }
             val ytIntent = Intent(Intent.ACTION_SEARCH).apply {
                 setPackage("com.google.android.youtube")
                 putExtra("query", query)
@@ -244,7 +332,7 @@ class CommandProcessor(private val context: Context) {
             }
             return try {
                 context.startActivity(ytIntent)
-                "YouTube par '$query' search kar diya hai."
+                "YouTube par '$query' chala diya hai."
             } catch (_: Exception) {
                 val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.youtube.com/results?search_query=${URLEncoder.encode(query, "UTF-8")}")).apply {
                     addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -269,12 +357,12 @@ class CommandProcessor(private val context: Context) {
                 .replace(Regex("\\s+(search karo|khojo)$", RegexOption.IGNORE_CASE), "")
                 .trim()
             val ok = PKAssistAccessibilityService.instance?.searchInCurrentApp(query) ?: false
-            return if (ok) "'$query' search kar diya gaya hai."
-            else "Current screen par search box nahi mila."
+            return if (ok) "'$query' search kar diya hai."
+            else "Search box nahi mila."
         }
 
-        // 5. Scroll & Global Screen Navigation
-        if (lower.contains("scroll down") || lower.contains("neeche scroll") || lower.contains("niche karo")) {
+        // 8. Scroll & Navigation
+        if (lower.contains("scroll down") || lower.contains("neeche") || lower.contains("niche")) {
             PKAssistAccessibilityService.instance?.scrollScreen(true)
             return "Screen neeche scroll kar di."
         }
@@ -282,13 +370,17 @@ class CommandProcessor(private val context: Context) {
             PKAssistAccessibilityService.instance?.scrollScreen(false)
             return "Screen upar scroll kar di."
         }
-        if (lower == "go home" || lower == "home chalo" || lower == "home screen") {
+        if (lower == "go home" || lower.contains("home chalo") || lower == "home screen") {
             PKAssistAccessibilityService.instance?.triggerGlobalAction("HOME")
             return "Home screen par aa gaye."
         }
-        if (lower == "go back" || lower == "peeche chalo" || lower == "back" || lower == "back karo") {
+        if (lower == "go back" || lower.contains("peeche chalo") || lower == "back" || lower == "back karo") {
             PKAssistAccessibilityService.instance?.triggerGlobalAction("BACK")
             return "Back kar diya."
+        }
+        if (lower.contains("recent apps") || lower.contains("recents")) {
+            PKAssistAccessibilityService.instance?.triggerGlobalAction("RECENTS")
+            return "Recent apps khol diye."
         }
         if (lower.contains("screenshot")) {
             PKAssistAccessibilityService.instance?.triggerGlobalAction("SCREENSHOT")
@@ -296,39 +388,49 @@ class CommandProcessor(private val context: Context) {
         }
         if (lower.contains("notification")) {
             PKAssistAccessibilityService.instance?.triggerGlobalAction("NOTIFICATIONS")
-            return "Notifications panel khol diya hai."
+            return "Notifications khol diye hain."
         }
 
-        // 6. Volume Control
-        if (lower.contains("volume badhao") || lower.contains("volume up") || lower.contains("awaz badhao")) {
+        // 9. Volume Control (Full, Mute, Up, Down)
+        if (lower.contains("volume") || lower.contains("awaz") || lower.contains("aawaz") || lower.contains("mute")) {
             val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            am.adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
-            return "Volume badha diya hai."
-        }
-        if (lower.contains("volume kam") || lower.contains("volume down") || lower.contains("awaz kam")) {
-            val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
-            am.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI)
-            return "Volume kam kar diya hai."
+            return when {
+                lower.contains("full") || lower.contains("max") || lower.contains("100") -> {
+                    val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, max, AudioManager.FLAG_SHOW_UI)
+                    "Volume full (100%) kar diya hai."
+                }
+                lower.contains("mute") || lower.contains("band") || lower.contains("zero") -> {
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, 0, AudioManager.FLAG_SHOW_UI)
+                    "Awaz mute kar di gayi hai."
+                }
+                lower.contains("kam") || lower.contains("down") || lower.contains("dhire") -> {
+                    am.adjustVolume(AudioManager.ADJUST_LOWER, AudioManager.FLAG_SHOW_UI)
+                    "Volume kam kar diya hai."
+                }
+                else -> {
+                    am.adjustVolume(AudioManager.ADJUST_RAISE, AudioManager.FLAG_SHOW_UI)
+                    "Volume badha diya hai."
+                }
+            }
         }
 
-        // 7. Flashlight / Torch
-        if (lower.contains("flashlight on") || lower.contains("torch on") || lower.contains("torch jala") || lower.contains("light jala")) {
-            return toggleFlashlight(true)
-        }
-        if (lower.contains("flashlight off") || lower.contains("torch off") || lower.contains("torch band") || lower.contains("light band")) {
-            return toggleFlashlight(false)
+        // 10. Flashlight / Torch (Natural Hinglish phrases)
+        if (lower.contains("torch") || lower.contains("flashlight") || lower.contains("flash light") || lower.contains("batti")) {
+            val turnOff = lower.contains("off") || lower.contains("band") || lower.contains("bujha")
+            return toggleFlashlight(!turnOff)
         }
 
-        // 8. Phone Calls
-        if (lower.startsWith("call ") || lower.contains("ko call") || lower.contains("par call") || lower.contains("phone lagao")) {
+        // 11. Phone Calls
+        if (lower.startsWith("call ") || lower.contains("ko call") || lower.contains("par call") || lower.contains("phone lagao") || lower.contains("number lagao")) {
             val target = lower
                 .removePrefix("call ")
-                .replace(Regex("\\s*(ko|par|pe)?\\s*(call|phone)\\s*(lagao|karo|laga do)?"), "")
+                .replace(Regex("\\s*(ko|par|pe)?\\s*(call|phone|number)\\s*(lagao|karo|laga do|mila do)?"), "")
                 .trim()
             return makePhoneCall(target)
         }
 
-        // 9. SMS Messages (Uses Intent + Accessibility Auto-Send so Play Protect never blocks the APK)
+        // 12. SMS Messages
         if (lower.startsWith("send sms to ") || lower.startsWith("send message to ") || lower.startsWith("sms ")) {
             val cleaned = input.replace(Regex("^(send sms to|send message to|sms)\\s+", RegexOption.IGNORE_CASE), "")
             val parts = cleaned.split(" ", limit = 2)
@@ -337,20 +439,23 @@ class CommandProcessor(private val context: Context) {
             }
         }
 
-        // 10. Open Any Installed App ("open whatsapp", "whatsapp kholo", "chrome open karo")
-        if (lower.startsWith("open ") || lower.startsWith("launch ") || lower.endsWith(" kholo") || lower.endsWith(" open karo") || lower.endsWith(" chalu karo")) {
+        // 13. Open Any Installed App
+        if (lower.startsWith("open ") || lower.startsWith("launch ") || lower.endsWith(" kholo") ||
+            lower.endsWith(" open karo") || lower.endsWith(" chalu karo") || lower.endsWith(" chala do")
+        ) {
             val appName = lower
                 .removePrefix("open ")
                 .removePrefix("launch ")
                 .removeSuffix(" open karo")
                 .removeSuffix(" chalu karo")
+                .removeSuffix(" chala do")
                 .removeSuffix(" kholo")
                 .trim()
             return openAppByName(appName)
         }
 
-        // 11. Battery, Time, Date, Wi-Fi, Bluetooth
-        if (lower.contains("battery")) {
+        // 14. Battery, Time, Date, Wi-Fi, Bluetooth, Hotspot, Settings
+        if (lower.contains("battery") || lower.contains("charge kitna")) {
             val bm = context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
             val level = bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
             return "Aapke phone ki battery abhi $level% hai."
@@ -371,11 +476,20 @@ class CommandProcessor(private val context: Context) {
             context.startActivity(Intent(Settings.ACTION_BLUETOOTH_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
             return "Bluetooth settings khol di hain."
         }
+        if (lower.contains("hotspot")) {
+            context.startActivity(Intent(Settings.ACTION_WIRELESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            return "Hotspot aur network settings khol di hain."
+        }
 
         return null
     }
 
-    private suspend fun callGeminiWithFallback(userCommand: String, apiKey: String): String? {
+    private suspend fun callGeminiWithScreenContext(
+        userCommand: String,
+        screenSummary: String,
+        apiKey: String,
+        savedPin: String
+    ): String? {
         val models = listOf(
             BuildConfig.PRIMARY_GEMINI_MODEL,
             BuildConfig.FALLBACK_GEMINI_MODEL,
@@ -384,13 +498,14 @@ class CommandProcessor(private val context: Context) {
         )
 
         val systemInstruction = """
-            You are PKassist Pro, an Android AI Assistant powered by RV GROUP.
+            You are PKassist Ultra (Gemini Glass Edition), an advanced Android AI Assistant powered by RV GROUP.
+            Current visible screen text: [$screenSummary]
             Respond ONLY with valid JSON:
             {
-              "action": "NONE" | "CALL" | "WHATSAPP" | "OPEN_APP" | "TYPE_TEXT" | "CLICK_TEXT" | "ALARM" | "FLASHLIGHT_ON" | "FLASHLIGHT_OFF" | "HOME" | "BACK",
-              "target": "contact/phone/app/button/time (HH:MM) if applicable",
+              "action": "NONE" | "UNLOCK" | "CALL" | "WHATSAPP" | "OPEN_APP" | "TYPE_TEXT" | "CLICK_TEXT" | "ALARM" | "FLASHLIGHT_ON" | "FLASHLIGHT_OFF" | "HOME" | "BACK" | "SCROLL_DOWN" | "SCROLL_UP",
+              "target": "contact/phone/app/button/PIN/time (HH:MM) if applicable",
               "content": "message or text to type if applicable",
-              "reply": "helpful Hinglish/Hindi/English spoken reply"
+              "reply": "natural, smart Hinglish/Hindi/English spoken reply"
             }
         """.trimIndent()
 
@@ -435,7 +550,7 @@ class CommandProcessor(private val context: Context) {
                     val target = parsedReply.optString("target", "")
                     val content = parsedReply.optString("content", "")
                     val reply = parsedReply.optString("reply", "Ho gaya!")
-                    executeStructuredAction(action, target, content)
+                    executeStructuredAction(action, target, content, savedPin)
                     return reply
                 }
             } catch (_: Exception) {
@@ -444,12 +559,10 @@ class CommandProcessor(private val context: Context) {
         return null
     }
 
-    /**
-     * Free keyless online AI fallback so general questions work out-of-the-box even without an AIzaSy key.
-     */
-    private fun callFreeOnlineAssistant(userCommand: String): String? {
+    private fun callFreeOnlineAssistant(userCommand: String, screenSummary: String): String? {
         return try {
-            val prompt = "You are PKassist Pro, a helpful Hinglish AI phone assistant by RV GROUP. Answer concisely in 1-2 sentences: $userCommand"
+            val ctx = if (screenSummary.isNotBlank()) " (Screen context: ${screenSummary.take(150)})" else ""
+            val prompt = "You are PKassist Ultra by RV GROUP. Answer concisely in Hinglish in 1-2 sentences: $userCommand$ctx"
             val url = "https://text.pollinations.ai/${URLEncoder.encode(prompt, "UTF-8")}"
             val req = Request.Builder().url(url).get().build()
             httpClient.newCall(req).execute().use { resp ->
@@ -460,8 +573,9 @@ class CommandProcessor(private val context: Context) {
         }
     }
 
-    private suspend fun executeStructuredAction(action: String, target: String, content: String) {
+    private suspend fun executeStructuredAction(action: String, target: String, content: String, savedPin: String) {
         when (action.uppercase(Locale.ROOT)) {
+            "UNLOCK" -> PKAssistAccessibilityService.instance?.unlockDeviceWithPin(target.ifEmpty { savedPin })
             "CALL" -> makePhoneCall(target)
             "WHATSAPP" -> sendWhatsAppAutomated(target, content)
             "OPEN_APP" -> openAppByName(target)
@@ -472,6 +586,8 @@ class CommandProcessor(private val context: Context) {
             "FLASHLIGHT_OFF" -> toggleFlashlight(false)
             "HOME" -> PKAssistAccessibilityService.instance?.triggerGlobalAction("HOME")
             "BACK" -> PKAssistAccessibilityService.instance?.triggerGlobalAction("BACK")
+            "SCROLL_DOWN" -> PKAssistAccessibilityService.instance?.scrollScreen(true)
+            "SCROLL_UP" -> PKAssistAccessibilityService.instance?.scrollScreen(false)
         }
     }
 
@@ -518,16 +634,20 @@ class CommandProcessor(private val context: Context) {
 
     private fun openAppByName(appName: String): String {
         val cleaned = appName.lowercase(Locale.ROOT).trim()
-        // Built-in package shortcuts for instant matching
         val knownPackages = mapOf(
             "whatsapp" to "com.whatsapp",
             "youtube" to "com.google.android.youtube",
+            "yt" to "com.google.android.youtube",
             "chrome" to "com.android.chrome",
             "instagram" to "com.instagram.android",
+            "insta" to "com.instagram.android",
             "facebook" to "com.facebook.katana",
+            "fb" to "com.facebook.katana",
             "gmail" to "com.google.android.gm",
             "maps" to "com.google.android.apps.maps",
-            "camera" to "com.android.camera"
+            "camera" to "com.android.camera",
+            "calculator" to "com.google.android.calculator",
+            "settings" to "com.android.settings"
         )
         val pm = context.packageManager
         knownPackages[cleaned]?.let { pkg ->

@@ -2,11 +2,14 @@ package com.rvgroup.pkassist.service
 
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
+import android.content.Context
 import android.graphics.Path
 import android.graphics.Rect
 import android.os.Bundle
+import android.os.PowerManager
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import kotlinx.coroutines.delay
 import java.util.Locale
 
 class PKAssistAccessibilityService : AccessibilityService() {
@@ -35,9 +38,124 @@ class PKAssistAccessibilityService : AccessibilityService() {
     }
 
     /**
-     * Types text into the currently focused field or first editable input on screen.
-     * If appendEnterOrClickSend is true, also attempts to click the Send/Search button afterward.
+     * Unlocks the phone when the user speaks their PIN/Password (even when screen is off or locked):
+     * 1. Wakes up the screen using PowerManager WakeLock
+     * 2. Swipes up on the lock screen to reveal the PIN pad / Password input
+     * 3. Enters each digit of the PIN on the Keyguard keypad (or sets text in password field) and taps Enter/OK
      */
+    suspend fun unlockDeviceWithPin(pinOrPassword: String): Boolean {
+        val cleanPin = pinOrPassword.trim()
+        if (cleanPin.isEmpty()) return false
+
+        // Step 1: Wake up screen if off
+        wakeUpScreen()
+        delay(400)
+
+        // Step 2: Swipe up from bottom of lock screen to reveal PIN/Password pad
+        performSwipeGesture(scrollDown = true)
+        delay(650)
+
+        val root = rootInActiveWindow
+        if (root != null) {
+            // Check if there is an editable password input box on the lock screen
+            val editable = findFirstEditableNode(root)
+            if (editable != null) {
+                val args = Bundle().apply {
+                    putCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE, cleanPin)
+                }
+                editable.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
+                delay(250)
+                clickElementByText("OK") || clickElementByText("Enter") || clickElementByText("Done")
+                return true
+            }
+        }
+
+        // Step 3: Tap each digit on the lock screen PIN keypad
+        var anyDigitClicked = false
+        for (ch in cleanPin) {
+            if (!ch.isWhitespace()) {
+                val clicked = clickPinDigit(ch.toString())
+                if (clicked) anyDigitClicked = true
+                delay(180)
+            }
+        }
+
+        // Step 4: Tap Enter / OK / Tick button on Keyguard
+        delay(200)
+        clickKeyguardEnter()
+        return anyDigitClicked
+    }
+
+    private fun wakeUpScreen() {
+        try {
+            val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+            @Suppress("DEPRECATION")
+            val wl = pm.newWakeLock(
+                PowerManager.FULL_WAKE_LOCK or PowerManager.ACQUIRE_CAUSES_WAKEUP or PowerManager.ON_AFTER_RELEASE,
+                "pkassist:WakeUnlockLock"
+            )
+            wl.acquire(5000L)
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun clickPinDigit(digit: String): Boolean {
+        val root = rootInActiveWindow ?: return false
+        // Try standard Android SystemUI keyguard button IDs first (e.g. com.android.systemui:id/key1)
+        val targets = listOf("id/key$digit", "id/digit_$digit", digit)
+        val node = findPinNode(root, digit, targets)
+        if (node != null) {
+            return clickNodeOrParent(node)
+        }
+        return false
+    }
+
+    private fun findPinNode(node: AccessibilityNodeInfo?, digit: String, idPatterns: List<String>): AccessibilityNodeInfo? {
+        if (node == null) return null
+        val text = node.text?.toString()?.trim() ?: ""
+        val desc = node.contentDescription?.toString()?.trim() ?: ""
+        val viewId = node.viewIdResourceName?.lowercase(Locale.ROOT) ?: ""
+
+        if (text == digit || text.startsWith("$digit\n") || desc == digit ||
+            idPatterns.any { viewId.endsWith(it) }
+        ) {
+            return node
+        }
+        for (i in 0 until node.childCount) {
+            val found = findPinNode(node.getChild(i), digit, idPatterns)
+            if (found != null) return found
+        }
+        return null
+    }
+
+    private fun clickKeyguardEnter(): Boolean {
+        val root = rootInActiveWindow ?: return false
+        val enterTargets = listOf("key_enter", "enter", "ok", "done", "confirm", "submit")
+        val node = findMatchingNode(root, enterTargets)
+        return if (node != null) clickNodeOrParent(node) else false
+    }
+
+    /**
+     * Reads all visible text on the current screen so the AI knows what is on screen or can read it aloud.
+     */
+    fun getScreenTextSummary(): String {
+        val root = rootInActiveWindow ?: return ""
+        val snippets = mutableListOf<String>()
+        collectVisibleTexts(root, snippets)
+        return snippets.distinct().take(25).joinToString(" | ")
+    }
+
+    private fun collectVisibleTexts(node: AccessibilityNodeInfo?, out: MutableList<String>) {
+        if (node == null || out.size >= 35) return
+        val t = node.text?.toString()?.trim()
+        if (!t.isNullOrBlank() && t.length in 2..120) {
+            out.add(t)
+        }
+        for (i in 0 until node.childCount) {
+            collectVisibleTexts(node.getChild(i), out)
+        }
+    }
+
     fun typeTextInFocusedField(text: String): Boolean {
         val root = rootInActiveWindow ?: return false
         var targetNode = root.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
@@ -54,10 +172,6 @@ class PKAssistAccessibilityService : AccessibilityService() {
         return targetNode.performAction(AccessibilityNodeInfo.ACTION_SET_TEXT, args)
     }
 
-    /**
-     * Smart fuzzy click: matches visible text, contentDescription (e.g. WhatsApp's "Send" or "Search" icon),
-     * or viewIdResourceName, and handles common STT misspellings like "sand" -> "send".
-     */
     fun clickElementByText(rawLabel: String): Boolean {
         val root = rootInActiveWindow ?: return false
         val cleaned = cleanButtonQuery(rawLabel)
@@ -71,15 +185,14 @@ class PKAssistAccessibilityService : AccessibilityService() {
         return false
     }
 
-    /**
-     * Automates searching inside an open app (like WhatsApp or YouTube):
-     * 1. Clicks the Search icon/bar
-     * 2. Types the query into the editable search box
-     */
-    fun searchInCurrentApp(query: String): Boolean {
+    suspend fun searchInCurrentApp(query: String): Boolean {
         clickElementByText("Search")
-        Thread.sleep(450)
-        return typeTextInFocusedField(query)
+        delay(500)
+        val typed = typeTextInFocusedField(query)
+        delay(500)
+        // Also try clicking the first matching search result
+        clickElementByText(query)
+        return typed
     }
 
     fun scrollScreen(forward: Boolean = true): Boolean {
@@ -91,7 +204,7 @@ class PKAssistAccessibilityService : AccessibilityService() {
             } else {
                 AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD
             }
-            return scrollable.performAction(action)
+            if (scrollable.performAction(action)) return true
         }
         return performSwipeGesture(forward)
     }
@@ -103,6 +216,9 @@ class PKAssistAccessibilityService : AccessibilityService() {
             "RECENTS" -> performGlobalAction(GLOBAL_ACTION_RECENTS)
             "NOTIFICATIONS" -> performGlobalAction(GLOBAL_ACTION_NOTIFICATIONS)
             "QUICK_SETTINGS" -> performGlobalAction(GLOBAL_ACTION_QUICK_SETTINGS)
+            "LOCK_SCREEN" -> if (android.os.Build.VERSION.SDK_INT >= 28) {
+                performGlobalAction(GLOBAL_ACTION_LOCK_SCREEN)
+            } else false
             "SCREENSHOT" -> if (android.os.Build.VERSION.SDK_INT >= 28) {
                 performGlobalAction(GLOBAL_ACTION_TAKE_SCREENSHOT)
             } else false
@@ -114,13 +230,12 @@ class PKAssistAccessibilityService : AccessibilityService() {
         var s = raw.lowercase(Locale.ROOT).trim()
         val fillers = listOf(
             "on the ", "on ", "the ", "button", "batan", "btn", "icon",
-            "par", "per", "pe", "ko", "mein", "me", "tap", "click", "dabao", "press"
+            "par", "per", "pe", "ko", "mein", "me", "tap", "click", "dabao", "press", "karo", "kar", "do"
         )
         for (f in fillers) {
             s = s.replace(Regex("\\b$f\\b"), " ")
         }
         s = s.replace(Regex("\\s+"), " ").trim()
-        // Fix common speech-to-text phonetic confusions
         if (s == "sand" || s == "saint" || s == "sent") s = "send"
         if (s == "sarch" || s == "surch") s = "search"
         return s
@@ -162,7 +277,6 @@ class PKAssistAccessibilityService : AccessibilityService() {
             }
             current = current.parent
         }
-        // Fallback: tap exact screen coordinates of the node
         val rect = Rect()
         node.getBoundsInScreen(rect)
         if (!rect.isEmpty) {
@@ -176,17 +290,17 @@ class PKAssistAccessibilityService : AccessibilityService() {
         return false
     }
 
-    private fun performSwipeGesture(scrollDown: Boolean): Boolean {
+    fun performSwipeGesture(scrollDown: Boolean): Boolean {
         val path = Path().apply {
             if (scrollDown) {
-                moveTo(540f, 1500f)
-                lineTo(540f, 500f)
+                moveTo(540f, 1650f)
+                lineTo(540f, 450f)
             } else {
-                moveTo(540f, 600f)
-                lineTo(540f, 1500f)
+                moveTo(540f, 550f)
+                lineTo(540f, 1600f)
             }
         }
-        val stroke = GestureDescription.StrokeDescription(path, 0, 250)
+        val stroke = GestureDescription.StrokeDescription(path, 0, 280)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
         return dispatchGesture(gesture, null, null)
     }
