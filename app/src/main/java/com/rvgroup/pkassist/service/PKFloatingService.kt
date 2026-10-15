@@ -363,7 +363,7 @@ class PKFloatingService : Service(), TextToSpeech.OnInitListener {
                 .trim()
                 .ifEmpty { spoken }
 
-            floatingView?.findViewById<TextView>(R.id.tvPopupStatus)?.text = "🗣️ "$cleanedCmd""
+            floatingView?.findViewById<TextView>(R.id.tvPopupStatus)?.text = "🗣️ \"$cleanedCmd\""
             if (isExpanded) {
                 floatingView?.findViewById<Button>(R.id.btnPopupMinimize)?.performClick()
             }
